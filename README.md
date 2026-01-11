@@ -79,6 +79,9 @@ tuck list
 # Attach to an existing session
 tuck attach myproject
 
+# Attach to the most recently active session
+tuck attach
+
 # Delete a session
 tuck delete myproject
 ```
@@ -135,7 +138,7 @@ Use `--quiet` or `-q` to suppress messages.
 tuck                      # Create and attach to a new session (auto-named)
 tuck new [cmd]            # Create a new session with auto-generated name
 tuck create <name> [cmd]  # Create a new session with specified name
-tuck attach <name>        # Attach to an existing session
+tuck attach [name]        # Attach to a session (default: most recent)
 tuck list                 # List all sessions (with last active time)
 tuck delete <name>        # Delete a session
 tuck clear                # Delete all sessions
@@ -148,6 +151,14 @@ tuck clear                # Delete all sessions
 - `tuck a` → `tuck attach`
 - `tuck ls` → `tuck list`
 - `tuck rm` → `tuck delete`
+
+## 🔧 Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `TUCK_SESSION` | Set inside tuck sessions. Prevents nested tuck sessions. |
+| `TUCK_DETACH_KEY` | Default detach key (e.g., `~.`, `` `. ``, `ctrl-a`) |
+| `TUCK_DETACH_KEY_1`, `_2`, ... | Additional detach keys |
 
 ## 📄 License
 

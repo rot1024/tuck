@@ -144,6 +144,24 @@ func List() ([]*Session, error) {
 	return sessions, nil
 }
 
+// MostRecent returns the most recently active session
+func MostRecent() (*Session, error) {
+	sessions, err := List()
+	if err != nil {
+		return nil, err
+	}
+	if len(sessions) == 0 {
+		return nil, nil
+	}
+	most := sessions[0]
+	for _, s := range sessions[1:] {
+		if s.LastActive.After(most.LastActive) {
+			most = s
+		}
+	}
+	return most, nil
+}
+
 // Remove removes a session's files
 func Remove(name string) error {
 	sockPath, _ := SocketPath(name)
