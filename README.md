@@ -24,11 +24,17 @@ I wanted to run [Claude Code](https://github.com/anthropics/claude-code) remotel
 
 ## 📦 Installation
 
+### Download Binary
+
+Download the latest release from [GitHub Releases](https://github.com/rot1024/tuck/releases).
+
+### Go Install
+
 ```bash
 go install github.com/rot1024/tuck@latest
 ```
 
-Or build from source:
+### Build from Source
 
 ```bash
 git clone https://github.com/rot1024/tuck.git
@@ -52,8 +58,10 @@ tuck create myproject
 # Start with a specific name and command
 tuck create myproject bash
 
-# List sessions
+# List sessions (shows name, last active time, command)
 tuck list
+# myproject    5s ago     claude
+# dev          2h ago     bash
 
 # Attach to an existing session
 tuck attach myproject
@@ -129,7 +137,7 @@ tuck                      # Create and attach to a new session (auto-named)
 tuck new [cmd]            # Create a new session with auto-generated name
 tuck create <name> [cmd]  # Create a new session with specified name
 tuck attach <name>        # Attach to an existing session
-tuck list                 # List all sessions
+tuck list                 # List all sessions (with last active time)
 tuck delete <name>        # Delete a session
 tuck clear                # Delete all sessions
 ```

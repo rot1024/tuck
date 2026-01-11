@@ -52,25 +52,26 @@ func NewServer(name string, command []string) (*Server, error) {
 	// Create Unix socket
 	sockPath, err := SocketPath(name)
 	if err != nil {
-		p.Close()
+		_ = p.Close()
 		return nil, err
 	}
 
 	listener, err := net.Listen("unix", sockPath)
 	if err != nil {
-		p.Close()
+		_ = p.Close()
 		return nil, err
 	}
 
 	// Save session info
 	sess := &Session{
-		Name:    name,
-		PID:     os.Getpid(),
-		Command: command,
+		Name:       name,
+		PID:        os.Getpid(),
+		Command:    command,
+		LastActive: time.Now(),
 	}
 	if err := sess.Save(); err != nil {
-		listener.Close()
-		p.Close()
+		_ = listener.Close()
+		_ = p.Close()
 		return nil, err
 	}
 
@@ -90,7 +91,7 @@ func (s *Server) Run() error {
 
 	// Wait for PTY process to exit
 	go func() {
-		s.pty.Wait()
+		_ = s.pty.Wait()
 		s.mu.Lock()
 		s.ptyExited = true
 		s.mu.Unlock()
@@ -99,7 +100,7 @@ func (s *Server) Run() error {
 		s.broadcast(MsgExit, nil)
 
 		// Wait briefly for client to connect if none yet
-		for i := 0; i < 50; i++ { // 5 seconds max
+		for range 50 { // 5 seconds max
 			s.mu.RLock()
 			hadClient := s.hadClient
 			s.mu.RUnlock()
@@ -138,17 +139,17 @@ func (s *Server) Shutdown() {
 		close(s.done)
 	}
 
-	s.listener.Close()
-	s.pty.Close()
+	_ = s.listener.Close()
+	_ = s.pty.Close()
 
 	s.mu.Lock()
 	for conn := range s.clients {
-		conn.Close()
+		_ = conn.Close()
 	}
 	s.mu.Unlock()
 
 	// Clean up session files
-	Remove(s.session.Name)
+	_ = Remove(s.session.Name)
 }
 
 // handlePTYOutput reads from PTY and broadcasts to all clients
@@ -163,9 +164,6 @@ func (s *Server) handlePTYOutput() {
 
 		n, err := s.pty.File.Read(buf)
 		if err != nil {
-			if err != io.EOF {
-				// PTY closed
-			}
 			return
 		}
 		if n > 0 {
@@ -188,12 +186,15 @@ func (s *Server) handleClient(conn net.Conn) {
 	s.mu.Lock()
 	s.clients[conn] = struct{}{}
 	s.hadClient = true
+	// Update last active time
+	s.session.LastActive = time.Now()
+	_ = s.session.Save()
 	s.mu.Unlock()
 
 	// Send buffered output to new client
 	s.outputBufMu.Lock()
 	if len(s.outputBuf) > 0 {
-		writeMessage(conn, MsgOutput, s.outputBuf)
+		_ = writeMessage(conn, MsgOutput, s.outputBuf)
 	}
 	s.outputBufMu.Unlock()
 
@@ -202,8 +203,8 @@ func (s *Server) handleClient(conn net.Conn) {
 	ptyExited := s.ptyExited
 	s.mu.RUnlock()
 	if ptyExited {
-		writeMessage(conn, MsgExit, nil)
-		conn.Close()
+		_ = writeMessage(conn, MsgExit, nil)
+		_ = conn.Close()
 		s.mu.Lock()
 		delete(s.clients, conn)
 		s.mu.Unlock()
@@ -214,7 +215,7 @@ func (s *Server) handleClient(conn net.Conn) {
 		s.mu.Lock()
 		delete(s.clients, conn)
 		s.mu.Unlock()
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	// Read messages from client
@@ -232,12 +233,12 @@ func (s *Server) handleClient(conn net.Conn) {
 
 		switch msgType {
 		case MsgInput:
-			s.pty.File.Write(data)
+			_, _ = s.pty.File.Write(data)
 		case MsgResize:
 			if len(data) >= 4 {
 				rows := binary.BigEndian.Uint16(data[0:2])
 				cols := binary.BigEndian.Uint16(data[2:4])
-				s.pty.Resize(rows, cols)
+				_ = s.pty.Resize(rows, cols)
 			}
 		}
 	}
@@ -249,7 +250,7 @@ func (s *Server) broadcast(msgType byte, data []byte) {
 	defer s.mu.RUnlock()
 
 	for conn := range s.clients {
-		writeMessage(conn, msgType, data)
+		_ = writeMessage(conn, msgType, data)
 	}
 }
 

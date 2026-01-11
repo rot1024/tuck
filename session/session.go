@@ -6,13 +6,15 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 )
 
 // Session represents a tuck session
 type Session struct {
-	Name    string   `json:"name"`
-	PID     int      `json:"pid"`
-	Command []string `json:"command"`
+	Name       string    `json:"name"`
+	PID        int       `json:"pid"`
+	Command    []string  `json:"command"`
+	LastActive time.Time `json:"last_active"`
 }
 
 // DataDir returns the directory for storing session data
