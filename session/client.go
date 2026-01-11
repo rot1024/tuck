@@ -3,7 +3,6 @@ package session
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -189,7 +188,7 @@ func Attach(name string, opts AttachOptions) error {
 }
 
 func (c *Client) run(showAttached bool) error {
-	defer c.conn.Close()
+	defer func() { _ = c.conn.Close() }()
 
 	// Show attach message before entering raw mode
 	if showAttached && !c.quiet {
@@ -231,7 +230,7 @@ func (c *Client) run(showAttached bool) error {
 
 func (c *Client) restore() {
 	if c.oldState != nil {
-		term.Restore(int(os.Stdin.Fd()), c.oldState)
+		_ = term.Restore(int(os.Stdin.Fd()), c.oldState)
 	}
 }
 
@@ -243,7 +242,7 @@ func (c *Client) sendWindowSize() {
 	data := make([]byte, 4)
 	binary.BigEndian.PutUint16(data[0:2], uint16(height))
 	binary.BigEndian.PutUint16(data[2:4], uint16(width))
-	writeMessage(c.conn, MsgResize, data)
+	_ = writeMessage(c.conn, MsgResize, data)
 }
 
 func (c *Client) handleOutput() {
@@ -256,16 +255,13 @@ func (c *Client) handleOutput() {
 
 		msgType, data, err := readMessage(c.conn)
 		if err != nil {
-			if err != io.EOF {
-				// Connection closed
-			}
 			c.close()
 			return
 		}
 
 		switch msgType {
 		case MsgOutput:
-			os.Stdout.Write(data)
+			_, _ = os.Stdout.Write(data)
 			// Track newlines in output for escape sequence detection (like SSH)
 			for _, b := range data {
 				if b == '\n' || b == '\r' {
@@ -360,7 +356,7 @@ func (c *Client) handleInput() error {
 		}
 
 		if len(toSend) > 0 {
-			writeMessage(c.conn, MsgInput, toSend)
+			_ = writeMessage(c.conn, MsgInput, toSend)
 		}
 	}
 }

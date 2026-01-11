@@ -31,12 +31,12 @@ var clearCmd = &cobra.Command{
 			if sess.PID > 0 {
 				proc, err := os.FindProcess(sess.PID)
 				if err == nil {
-					proc.Signal(syscall.SIGTERM)
+					_ = proc.Signal(syscall.SIGTERM)
 				}
 			}
 
 			// Remove session files
-			session.Remove(sess.Name)
+			_ = session.Remove(sess.Name)
 			fmt.Printf("Session %q deleted\n", sess.Name)
 		}
 

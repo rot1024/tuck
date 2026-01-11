@@ -74,7 +74,7 @@ func createAndAttachSession(name string, command []string) {
 	// Capture server stderr for error reporting
 	errPath, _ := session.ErrorPath(name)
 	if errPath != "" {
-		os.Remove(errPath) // Clean up any previous error
+		_ = os.Remove(errPath) // Clean up any previous error
 	}
 
 	if err := serverCmd.Start(); err != nil {
@@ -90,7 +90,7 @@ func createAndAttachSession(name string, command []string) {
 		// Check if server wrote an error
 		if errPath != "" {
 			if errData, err := os.ReadFile(errPath); err == nil && len(errData) > 0 {
-				os.Remove(errPath)
+				_ = os.Remove(errPath)
 				fmt.Fprintf(os.Stderr, "Error: %s\n", string(errData))
 				os.Exit(1)
 			}
@@ -105,7 +105,7 @@ func createAndAttachSession(name string, command []string) {
 		// Check for error file one more time
 		if errPath != "" {
 			if errData, err := os.ReadFile(errPath); err == nil && len(errData) > 0 {
-				os.Remove(errPath)
+				_ = os.Remove(errPath)
 				fmt.Fprintf(os.Stderr, "Error: %s\n", string(errData))
 				os.Exit(1)
 			}
@@ -137,11 +137,11 @@ func runServer(name string, command []string) {
 	if err != nil {
 		// Write error to file for client to read
 		if errPath, pathErr := session.ErrorPath(name); pathErr == nil {
-			os.WriteFile(errPath, []byte(err.Error()), 0600)
+			_ = os.WriteFile(errPath, []byte(err.Error()), 0600)
 		}
 		os.Exit(1)
 	}
-	server.Run()
+	_ = server.Run()
 }
 
 func sleepMs(ms int) {
