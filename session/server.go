@@ -17,12 +17,18 @@ const (
 	MsgExit   byte = 4
 )
 
+// clientInfo holds per-client state
+type clientInfo struct {
+	rows uint16
+	cols uint16
+}
+
 // Server manages a session
 type Server struct {
 	session     *Session
 	pty         *PTY
 	listener    net.Listener
-	clients     map[net.Conn]struct{}
+	clients     map[net.Conn]*clientInfo
 	mu          sync.RWMutex
 	done        chan struct{}
 	ptyExited   bool
@@ -79,7 +85,7 @@ func NewServer(name string, command []string) (*Server, error) {
 		session:  sess,
 		pty:      p,
 		listener: listener,
-		clients:  make(map[net.Conn]struct{}),
+		clients:  make(map[net.Conn]*clientInfo),
 		done:     make(chan struct{}),
 	}, nil
 }
@@ -184,7 +190,7 @@ func (s *Server) handlePTYOutput() {
 // handleClient handles a single client connection
 func (s *Server) handleClient(conn net.Conn) {
 	s.mu.Lock()
-	s.clients[conn] = struct{}{}
+	s.clients[conn] = &clientInfo{}
 	s.hadClient = true
 	// Update last active time
 	s.session.LastActive = time.Now()
@@ -214,6 +220,13 @@ func (s *Server) handleClient(conn net.Conn) {
 	defer func() {
 		s.mu.Lock()
 		delete(s.clients, conn)
+		// Resize PTY to a remaining client's size if any
+		for _, info := range s.clients {
+			if info != nil && info.rows > 0 && info.cols > 0 {
+				_ = s.pty.Resize(info.rows, info.cols)
+				break
+			}
+		}
 		s.mu.Unlock()
 		_ = conn.Close()
 	}()
@@ -233,11 +246,24 @@ func (s *Server) handleClient(conn net.Conn) {
 
 		switch msgType {
 		case MsgInput:
+			// Resize PTY to active client's size on input
+			s.mu.RLock()
+			if info := s.clients[conn]; info != nil && info.rows > 0 && info.cols > 0 {
+				_ = s.pty.Resize(info.rows, info.cols)
+			}
+			s.mu.RUnlock()
 			_, _ = s.pty.File.Write(data)
 		case MsgResize:
 			if len(data) >= 4 {
 				rows := binary.BigEndian.Uint16(data[0:2])
 				cols := binary.BigEndian.Uint16(data[2:4])
+				// Store client's window size
+				s.mu.Lock()
+				if info := s.clients[conn]; info != nil {
+					info.rows = rows
+					info.cols = cols
+				}
+				s.mu.Unlock()
 				_ = s.pty.Resize(rows, cols)
 			}
 		}
