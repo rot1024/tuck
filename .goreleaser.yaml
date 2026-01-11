@@ -33,7 +33,7 @@ snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 changelog:
-  sort: asc
+  use: git
   filters:
     exclude:
       - '^docs:'
