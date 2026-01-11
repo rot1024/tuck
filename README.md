@@ -66,31 +66,43 @@ tuck delete myproject
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+\` | Detach from session (default) |
+| `~.` | Detach from session (default, like SSH) |
+| `~~` | Send literal `~` character |
+
+### SSH-Style Escape Sequence
+
+Like SSH, you can detach by pressing `~.` (tilde then period) after a newline. This works great with Claude Code and other applications that capture control keys.
 
 ### Custom Detach Key
 
-You can change the detach key via flag or environment variable:
+You can configure detach keys via flags or environment variables:
 
 ```bash
-# Via flag
-tuck -d ctrl-a new mysession
-tuck --detach-key ctrl-b attach mysession
+# Single key via flag
+tuck -d '~.' new
+tuck -d ctrl-a attach mysession
 
-# Via environment variable
-export TUCK_DETACH_KEY=ctrl-a
-tuck new mysession
+# Multiple keys via flags
+tuck -d '`.' -d ctrl-a new
+
+# Via environment variables
+export TUCK_DETACH_KEY='`.'
+export TUCK_DETACH_KEY_1='~.'
+export TUCK_DETACH_KEY_2=ctrl-a
+tuck new
 ```
 
-Supported formats: `ctrl-a`, `ctrl-b`, `^a`, `^A`, `ctrl-\`
+Supported formats:
+- Escape sequences: `` `. ``, `~.` (character + period, triggered after Enter)
+- Control keys: `ctrl-a`, `ctrl-]`, `^a`, `^A`
 
 ## 💬 Messages
 
 tuck shows helpful status messages:
 
 ```
-[tuck: ✨ created "myproject"]
-[tuck: 🔗 attached "myproject" (Ctrl+\ to detach)]
+[tuck: ✨ created "myproject" (~. to detach)]
+[tuck: 🔗 attached "myproject" (~. to detach)]
 [tuck: 👋 detached "myproject"]
 [tuck: 🏁 ended "myproject"]
 ```

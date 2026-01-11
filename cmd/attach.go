@@ -12,9 +12,8 @@ var attachCmd = &cobra.Command{
 	Use:     "attach <name>",
 	Aliases: []string{"a"},
 	Short:   "Attach to an existing session",
-	Long: `Attach to an existing session with the given name.
-Use Ctrl+\ to detach from the session.`,
-	Args: cobra.ExactArgs(1),
+	Long:    `Attach to an existing session with the given name.`,
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
 
@@ -24,8 +23,8 @@ Use Ctrl+\ to detach from the session.`,
 		}
 
 		if err := session.Attach(name, session.AttachOptions{
-			Quiet:     quietFlag,
-			DetachKey: mustGetDetachKey(),
+			Quiet:      quietFlag,
+			DetachKeys: mustGetDetachKeys(),
 		}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

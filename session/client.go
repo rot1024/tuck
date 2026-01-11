@@ -15,53 +15,41 @@ import (
 // AppName is the application name used in messages
 const AppName = "tuck"
 
-// DefaultDetachKey is Ctrl+\ (ASCII 28)
-const DefaultDetachKey = 28
+// DefaultDetachKeys is the default detach method (tilde + period, like SSH)
+var DefaultDetachKeys = []DetachKey{{EscapeChar: '~'}}
 
-// ParseDetachKey parses a detach key string like "ctrl-a", "ctrl-\\", etc.
-func ParseDetachKey(s string) (byte, error) {
-	if s == "" {
-		return DefaultDetachKey, nil
-	}
-
-	// Handle ctrl-X format
-	if len(s) >= 6 && (s[:5] == "ctrl-" || s[:5] == "Ctrl-") {
-		char := s[5:]
-		if char == "\\" || char == "backslash" {
-			return 28, nil // Ctrl+\
-		}
-		if len(char) == 1 {
-			c := char[0]
-			if c >= 'a' && c <= 'z' {
-				return c - 'a' + 1, nil // ctrl-a = 1, ctrl-b = 2, etc.
-			}
-			if c >= 'A' && c <= 'Z' {
-				return c - 'A' + 1, nil
-			}
-		}
-	}
-
-	// Handle ^X format
-	if len(s) == 2 && s[0] == '^' {
-		c := s[1]
-		if c == '\\' {
-			return 28, nil
-		}
-		if c >= 'a' && c <= 'z' {
-			return c - 'a' + 1, nil
-		}
-		if c >= 'A' && c <= 'Z' {
-			return c - 'A' + 1, nil
-		}
-	}
-
-	return 0, fmt.Errorf("invalid detach key: %q (use ctrl-a, ctrl-b, etc.)", s)
+// DetachKey represents a method to detach from a session
+type DetachKey struct {
+	CtrlKey    byte // Single control key (e.g., 28 for Ctrl+\)
+	EscapeChar byte // Escape character for sequence (e.g., '~' for ~.)
 }
 
-// FormatDetachKey formats a detach key byte to a human-readable string
-func FormatDetachKey(key byte) string {
-	if key == 28 {
+// IsEscapeSequence returns true if this is an escape sequence (char + .)
+func (d DetachKey) IsEscapeSequence() bool {
+	return d.EscapeChar != 0
+}
+
+// String returns a human-readable representation
+func (d DetachKey) String() string {
+	if d.IsEscapeSequence() {
+		return fmt.Sprintf("%c.", d.EscapeChar)
+	}
+	return formatCtrlKey(d.CtrlKey)
+}
+
+// formatCtrlKey formats a control key byte to a human-readable string
+func formatCtrlKey(key byte) string {
+	switch key {
+	case 27:
+		return "Ctrl+["
+	case 28:
 		return "Ctrl+\\"
+	case 29:
+		return "Ctrl+]"
+	case 30:
+		return "Ctrl+^"
+	case 31:
+		return "Ctrl+_"
 	}
 	if key >= 1 && key <= 26 {
 		return fmt.Sprintf("Ctrl+%c", 'A'+key-1)
@@ -69,21 +57,102 @@ func FormatDetachKey(key byte) string {
 	return fmt.Sprintf("0x%02x", key)
 }
 
+// ParseDetachKey parses a detach key string
+// Formats:
+//   - "ctrl-a", "^a" → control key
+//   - "~.", "`." → escape sequence (char followed by .)
+func ParseDetachKey(s string) (DetachKey, error) {
+	if s == "" {
+		return DetachKey{}, fmt.Errorf("empty detach key")
+	}
+
+	// Handle escape sequence format: X. (any char followed by .)
+	if len(s) == 2 && s[1] == '.' {
+		return DetachKey{EscapeChar: s[0]}, nil
+	}
+
+	// Handle ctrl-X format
+	if len(s) >= 6 && (s[:5] == "ctrl-" || s[:5] == "Ctrl-") {
+		char := s[5:]
+		if key, ok := parseCtrlChar(char); ok {
+			return DetachKey{CtrlKey: key}, nil
+		}
+	}
+
+	// Handle ^X format
+	if len(s) >= 2 && s[0] == '^' {
+		char := s[1:]
+		if key, ok := parseCtrlChar(char); ok {
+			return DetachKey{CtrlKey: key}, nil
+		}
+	}
+
+	return DetachKey{}, fmt.Errorf("invalid detach key: %q (use ctrl-a, ^a, ~., `., etc.)", s)
+}
+
+// parseCtrlChar parses a character for ctrl combination
+func parseCtrlChar(char string) (byte, bool) {
+	// Special characters
+	switch char {
+	case "[":
+		return 27, true // Ctrl+[ (ESC)
+	case "\\", "backslash":
+		return 28, true // Ctrl+\
+	case "]":
+		return 29, true // Ctrl+]
+	case "^", "caret":
+		return 30, true // Ctrl+^
+	case "_", "underscore":
+		return 31, true // Ctrl+_
+	}
+
+	if len(char) == 1 {
+		c := char[0]
+		if c >= 'a' && c <= 'z' {
+			return c - 'a' + 1, true // ctrl-a = 1, ctrl-b = 2, etc.
+		}
+		if c >= 'A' && c <= 'Z' {
+			return c - 'A' + 1, true
+		}
+	}
+	return 0, false
+}
+
+// FormatDetachKeys formats multiple detach keys for display
+func FormatDetachKeys(keys []DetachKey) string {
+	if len(keys) == 0 {
+		return ""
+	}
+	if len(keys) == 1 {
+		return keys[0].String()
+	}
+	result := keys[0].String()
+	for _, k := range keys[1:] {
+		result += " or " + k.String()
+	}
+	return result
+}
+
 // Client connects to a session
 type Client struct {
-	conn      net.Conn
-	oldState  *term.State
-	done      chan struct{}
-	name      string
-	quiet     bool
-	detachKey byte
+	conn       net.Conn
+	oldState   *term.State
+	done       chan struct{}
+	name       string
+	quiet      bool
+	detachKeys []DetachKey
+	// Escape sequence state (tracks state for each escape char)
+	afterNewline  bool
+	sawEscapeChar byte // The escape char we saw (0 if none)
+	// Terminal ESC sequence tracking (to ignore focus events etc.)
+	inEscSeq bool
 }
 
 // AttachOptions contains options for attaching to a session
 type AttachOptions struct {
 	Quiet            bool
-	SuppressAttached bool // Don't show "attached" message (for new session)
-	DetachKey        byte // Key to detach (0 = use default)
+	SuppressAttached bool        // Don't show "attached" message (for new session)
+	DetachKeys       []DetachKey // Keys/sequences to detach (nil = use default)
 }
 
 // Attach connects to an existing session
@@ -102,17 +171,18 @@ func Attach(name string, opts AttachOptions) error {
 		return fmt.Errorf("failed to connect to session: %w", err)
 	}
 
-	detachKey := opts.DetachKey
-	if detachKey == 0 {
-		detachKey = DefaultDetachKey
+	detachKeys := opts.DetachKeys
+	if len(detachKeys) == 0 {
+		detachKeys = DefaultDetachKeys
 	}
 
 	c := &Client{
-		conn:      conn,
-		done:      make(chan struct{}),
-		name:      name,
-		quiet:     opts.Quiet,
-		detachKey: detachKey,
+		conn:         conn,
+		done:         make(chan struct{}),
+		name:         name,
+		quiet:        opts.Quiet,
+		detachKeys:   detachKeys,
+		afterNewline: true, // Start as if we just saw a newline
 	}
 
 	return c.run(!opts.SuppressAttached)
@@ -123,7 +193,7 @@ func (c *Client) run(showAttached bool) error {
 
 	// Show attach message before entering raw mode
 	if showAttached && !c.quiet {
-		fmt.Fprintf(os.Stderr, "[%s: 🔗 attached %q (%s to detach)]\n", AppName, c.name, FormatDetachKey(c.detachKey))
+		fmt.Fprintf(os.Stderr, "[%s: 🔗 attached %q (%s to detach)]\n", AppName, c.name, FormatDetachKeys(c.detachKeys))
 	}
 
 	// Set terminal to raw mode
@@ -196,6 +266,13 @@ func (c *Client) handleOutput() {
 		switch msgType {
 		case MsgOutput:
 			os.Stdout.Write(data)
+			// Track newlines in output for escape sequence detection (like SSH)
+			for _, b := range data {
+				if b == '\n' || b == '\r' {
+					c.afterNewline = true
+					break
+				}
+			}
 		case MsgExit:
 			// Restore terminal and show message
 			c.restore()
@@ -221,21 +298,88 @@ func (c *Client) handleInput() error {
 			return err
 		}
 
-		// Check for detach key
+		// Process input byte by byte for escape sequence detection
+		var toSend []byte
 		for i := 0; i < n; i++ {
-			if buf[i] == c.detachKey {
-				c.close()
-				c.restore()
-				if !c.quiet {
-					fmt.Fprintf(os.Stderr, "\n[%s: 👋 detached %q]\n", AppName, c.name)
+			b := buf[i]
+
+			// Check for single-key detach (control keys)
+			for _, dk := range c.detachKeys {
+				if !dk.IsEscapeSequence() && b == dk.CtrlKey {
+					c.doDetach()
+					return nil
 				}
-				return nil
+			}
+
+			// Escape sequence state machine
+			if c.sawEscapeChar != 0 {
+				// We previously saw an escape char after a newline
+				escChar := c.sawEscapeChar
+				c.sawEscapeChar = 0
+				switch b {
+				case '.':
+					// X. = detach
+					c.doDetach()
+					return nil
+				case escChar:
+					// XX = send single X
+					toSend = append(toSend, escChar)
+				default:
+					// Not a recognized sequence, send buffered escape char and current char
+					toSend = append(toSend, escChar, b)
+				}
+				// Update newline state based on current char
+				c.afterNewline = (b == '\n' || b == '\r')
+			} else if c.afterNewline && c.isEscapeChar(b) {
+				// Escape char after newline - start escape sequence
+				c.sawEscapeChar = b
+				c.afterNewline = false
+			} else {
+				// Normal character
+				toSend = append(toSend, b)
+
+				// Track terminal ESC sequences (like focus events) to ignore them
+				if b == 27 { // ESC
+					c.inEscSeq = true
+				} else if c.inEscSeq {
+					// Check if ESC sequence ends (letter terminates CSI sequences)
+					if (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') {
+						c.inEscSeq = false
+					}
+					// Don't update afterNewline while in ESC sequence
+				} else {
+					// Not in ESC sequence - update afterNewline normally
+					if b == '\n' || b == '\r' {
+						c.afterNewline = true
+					} else if b >= 32 && b < 127 {
+						// Printable ASCII - user is typing, reset afterNewline
+						c.afterNewline = false
+					}
+				}
 			}
 		}
 
-		if n > 0 {
-			writeMessage(c.conn, MsgInput, buf[:n])
+		if len(toSend) > 0 {
+			writeMessage(c.conn, MsgInput, toSend)
 		}
+	}
+}
+
+// isEscapeChar checks if byte is a configured escape character
+func (c *Client) isEscapeChar(b byte) bool {
+	for _, dk := range c.detachKeys {
+		if dk.IsEscapeSequence() && dk.EscapeChar == b {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Client) doDetach() {
+	c.close()
+	c.restore()
+	if !c.quiet {
+		fmt.Fprintf(os.Stderr, "\n[%s: 👋 detached %q]\n", AppName, c.name)
 	}
 }
 

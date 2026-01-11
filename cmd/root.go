@@ -8,35 +8,55 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// getDetachKey returns the detach key from flag or environment variable
-func getDetachKey() (byte, error) {
-	keyStr := detachKeyFlag
-	if keyStr == "" {
-		keyStr = os.Getenv("TUCK_DETACH_KEY")
+// getDetachKeys returns the detach keys from flags or environment variables
+func getDetachKeys() ([]session.DetachKey, error) {
+	var keyStrs []string
+
+	// Collect from flags
+	keyStrs = append(keyStrs, detachKeyFlags...)
+
+	// Collect from environment variables (TUCK_DETACH_KEY, TUCK_DETACH_KEY_1, TUCK_DETACH_KEY_2, ...)
+	if envKey := os.Getenv("TUCK_DETACH_KEY"); envKey != "" {
+		keyStrs = append(keyStrs, envKey)
 	}
-	if keyStr == "" {
-		return session.DefaultDetachKey, nil
+	for i := 1; ; i++ {
+		envKey := os.Getenv(fmt.Sprintf("TUCK_DETACH_KEY_%d", i))
+		if envKey == "" {
+			break
+		}
+		keyStrs = append(keyStrs, envKey)
 	}
-	key, err := session.ParseDetachKey(keyStr)
-	if err != nil {
-		return 0, err
+
+	// Use defaults if none specified
+	if len(keyStrs) == 0 {
+		return session.DefaultDetachKeys, nil
 	}
-	return key, nil
+
+	// Parse all keys
+	var keys []session.DetachKey
+	for _, s := range keyStrs {
+		key, err := session.ParseDetachKey(s)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 
-// mustGetDetachKey returns the detach key or exits on error
-func mustGetDetachKey() byte {
-	key, err := getDetachKey()
+// mustGetDetachKeys returns the detach keys or exits on error
+func mustGetDetachKeys() []session.DetachKey {
+	keys, err := getDetachKeys()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	return key
+	return keys
 }
 
 var (
-	quietFlag     bool
-	detachKeyFlag string
+	quietFlag      bool
+	detachKeyFlags []string
 )
 
 var rootCmd = &cobra.Command{
@@ -61,7 +81,7 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "Suppress status messages")
-	rootCmd.PersistentFlags().StringVarP(&detachKeyFlag, "detach-key", "d", "", "Detach key (e.g., ctrl-a, ctrl-b, default: ctrl-\\)")
+	rootCmd.PersistentFlags().StringArrayVarP(&detachKeyFlags, "detach-key", "d", nil, "Detach key (e.g., `., ~., ctrl-a). Can be specified multiple times")
 
 	// Allow command arguments with dashes (e.g., "claude --continue")
 	newCmd.Flags().SetInterspersed(false)

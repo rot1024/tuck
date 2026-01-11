@@ -115,15 +115,17 @@ func createAndAttachSession(name string, command []string) {
 	}
 
 	// Show created message
+	detachKeys := mustGetDetachKeys()
 	if !quietFlag {
-		fmt.Fprintf(os.Stderr, "[%s: ✨ created %q]\n", session.AppName, name)
+		fmt.Fprintf(os.Stderr, "[%s: ✨ created %q (%s to detach)]\n",
+			session.AppName, name, session.FormatDetachKeys(detachKeys))
 	}
 
 	// Attach to the session
 	if err := session.Attach(name, session.AttachOptions{
 		Quiet:            quietFlag,
 		SuppressAttached: true,
-		DetachKey:        mustGetDetachKey(),
+		DetachKeys:       detachKeys,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
