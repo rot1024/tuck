@@ -12,7 +12,9 @@ var attachCmd = &cobra.Command{
 	Use:     "attach <name>",
 	Aliases: []string{"a"},
 	Short:   "Attach to an existing session",
-	Long:    `Attach to an existing session with the given name.`,
+	Long: `Attach to an existing session with the given name.
+
+Use ~. (default) or configured detach key to detach.`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]

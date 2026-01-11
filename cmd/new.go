@@ -20,7 +20,7 @@ var newCmd = &cobra.Command{
 If no command is specified, the default shell is used.
 
 After creating the session, you will be automatically attached to it.
-Use Ctrl+\ to detach from the session.`,
+Use ~. (default) or configured detach key to detach.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		name := generateSessionName()
 		createAndAttachSession(name, args)
@@ -35,7 +35,7 @@ var createCmd = &cobra.Command{
 If no command is specified, the default shell is used.
 
 After creating the session, you will be automatically attached to it.
-Use Ctrl+\ to detach from the session.`,
+Use ~. (default) or configured detach key to detach.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
