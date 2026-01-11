@@ -87,12 +87,11 @@ tuck delete myproject
 
 | Key | Action |
 |-----|--------|
-| `~.` | Detach from session (default, like SSH) |
-| `~~` | Send literal `~` character |
+| `~.` | Detach from session (after Enter, like SSH) |
 
-### SSH-Style Escape Sequence
+### Escape Sequence
 
-Like SSH, you can detach by pressing `~.` (tilde then period) after a newline. This works great with Claude Code and other applications that capture control keys.
+You can detach by pressing `~.` (tilde then period) after a newline. The `~` character is sent immediately, and if followed by `.`, detach is triggered. This works great with Claude Code and other applications that capture control keys.
 
 ### Custom Detach Key
 

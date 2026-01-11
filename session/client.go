@@ -310,25 +310,20 @@ func (c *Client) handleInput() error {
 			// Escape sequence state machine
 			if c.sawEscapeChar != 0 {
 				// We previously saw an escape char after a newline
-				escChar := c.sawEscapeChar
 				c.sawEscapeChar = 0
-				switch b {
-				case '.':
+				if b == '.' {
 					// X. = detach
 					c.doDetach()
 					return nil
-				case escChar:
-					// XX = send single X
-					toSend = append(toSend, escChar)
-				default:
-					// Not a recognized sequence, send buffered escape char and current char
-					toSend = append(toSend, escChar, b)
 				}
+				// Not a detach sequence, continue normally
+				toSend = append(toSend, b)
 				// Update newline state based on current char
 				c.afterNewline = (b == '\n' || b == '\r')
 			} else if c.afterNewline && c.isEscapeChar(b) {
-				// Escape char after newline - start escape sequence
+				// Escape char after newline - remember it but still send it
 				c.sawEscapeChar = b
+				toSend = append(toSend, b)
 				c.afterNewline = false
 			} else {
 				// Normal character
