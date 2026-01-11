@@ -14,6 +14,19 @@ I wanted to run [Claude Code](https://github.com/anthropics/claude-code) remotel
 
 **tuck** solves this by *not* using the alternate screen buffer. Your terminal stays clean, scrollback works, and Claude Code renders perfectly.
 
+## 🤔 Why tuck?
+
+| Feature | tmux | screen | abduco | tuck |
+|---------|------|--------|--------|------|
+| Session detach/attach | ✅ | ✅ | ✅ | ✅ |
+| Multiple clients | ✅ | ✅ | ✅ | ✅ |
+| Window splitting | ✅ | ✅ | ❌ | ❌ |
+| Status bar | ✅ | ✅ | ❌ | ❌ |
+| Native scrollback | ❌ | ❌ | ❌ | ✅ |
+| Zero config | ❌ | ❌ | ✅ | ✅ |
+
+**tuck** doesn't use the alternate screen buffer, so your terminal's scrollback buffer remains functional. Perfect for tools like Claude Code that rely on terminal rendering.
+
 ## ✨ Features
 
 - **📎 Session Management** — Create, attach, detach, and delete sessions
@@ -116,19 +129,6 @@ tuck shows helpful status messages:
 ```
 
 Use `--quiet` or `-q` to suppress messages.
-
-## 🤔 Why tuck?
-
-| Feature | tmux | screen | abduco | tuck |
-|---------|------|--------|--------|------|
-| Session detach/attach | ✅ | ✅ | ✅ | ✅ |
-| Multiple clients | ✅ | ✅ | ✅ | ✅ |
-| Window splitting | ✅ | ✅ | ❌ | ❌ |
-| Status bar | ✅ | ✅ | ❌ | ❌ |
-| Native scrollback | ❌ | ❌ | ❌ | ✅ |
-| Zero config | ❌ | ❌ | ✅ | ✅ |
-
-**tuck** doesn't use the alternate screen buffer, so your terminal's scrollback buffer remains functional. Perfect for tools like Claude Code that rely on terminal rendering.
 
 ## 📝 Commands
 
