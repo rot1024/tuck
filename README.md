@@ -131,6 +131,7 @@ tuck create <name> [cmd]  # Create a new session with specified name
 tuck attach <name>        # Attach to an existing session
 tuck list                 # List all sessions
 tuck delete <name>        # Delete a session
+tuck clear                # Delete all sessions
 ```
 
 ### Aliases

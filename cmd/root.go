@@ -93,4 +93,5 @@ func init() {
 	rootCmd.AddCommand(attachCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(clearCmd)
 }
