@@ -17,6 +17,7 @@ var attachCmd = &cobra.Command{
 Use ~. (default) or configured detach key to detach.`,
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		checkNotNested()
 		name := args[0]
 
 		if !session.Exists(name) {

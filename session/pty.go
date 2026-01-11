@@ -14,7 +14,7 @@ type PTY struct {
 }
 
 // StartPTY starts a command in a new PTY
-func StartPTY(command []string) (*PTY, error) {
+func StartPTY(sessionName string, command []string) (*PTY, error) {
 	var cmd *exec.Cmd
 	if len(command) == 0 {
 		shell := os.Getenv("SHELL")
@@ -26,8 +26,8 @@ func StartPTY(command []string) (*PTY, error) {
 		cmd = exec.Command(command[0], command[1:]...)
 	}
 
-	// Set up environment
-	cmd.Env = os.Environ()
+	// Set up environment with TUCK_SESSION to prevent nesting
+	cmd.Env = append(os.Environ(), "TUCK_SESSION="+sessionName)
 
 	// Start the command with a PTY
 	ptmx, err := pty.Start(cmd)

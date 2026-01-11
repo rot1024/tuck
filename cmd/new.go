@@ -22,6 +22,7 @@ If no command is specified, the default shell is used.
 After creating the session, you will be automatically attached to it.
 Use ~. (default) or configured detach key to detach.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		checkNotNested()
 		name := generateSessionName()
 		createAndAttachSession(name, args)
 	},
@@ -38,6 +39,7 @@ After creating the session, you will be automatically attached to it.
 Use ~. (default) or configured detach key to detach.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		checkNotNested()
 		name := args[0]
 		command := args[1:]
 		createAndAttachSession(name, command)

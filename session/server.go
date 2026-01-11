@@ -50,7 +50,7 @@ func NewServer(name string, command []string) (*Server, error) {
 	}
 
 	// Start PTY
-	p, err := StartPTY(command)
+	p, err := StartPTY(name, command)
 	if err != nil {
 		return nil, err
 	}

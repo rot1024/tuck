@@ -54,6 +54,14 @@ func mustGetDetachKeys() []session.DetachKey {
 	return keys
 }
 
+// checkNotNested exits if already inside a tuck session
+func checkNotNested() {
+	if s := os.Getenv("TUCK_SESSION"); s != "" {
+		fmt.Fprintf(os.Stderr, "Error: already inside tuck session %q\n", s)
+		os.Exit(1)
+	}
+}
+
 var (
 	quietFlag      bool
 	detachKeyFlags []string
